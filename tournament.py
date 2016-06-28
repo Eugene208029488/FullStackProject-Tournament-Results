@@ -6,40 +6,45 @@
 import psycopg2
 
 
-def connect():
+def connect(database_name="tournament"):
     """Connect to the PostgreSQL database.  Returns a database connection."""
-    return psycopg2.connect("dbname=tournament")
+    try:
+        db = psycopg2.connect("dbname={}".format(database_name))
+        cursor = db.cursor()
+        return db, cursor
+    except:
+        print("db connection error")
+
 
 
 def deleteMatches():
     """Remove all the match records from the database."""
-    DB = connect()
-    c = DB.cursor()
-    c.execute("DELETE FROM matches")
-    DB.commit()
+    db, cursor = connect()
+    cursor.execute("DELETE FROM matches")
+    db.commit()
     return
 
 
 def deletePlayers():
     """Remove all the player records from the database."""
-    DB = connect()
-    c = DB.cursor()
-    c.execute("DELETE FROM players")
-    DB.commit()
+    db, cursor = connect()
+    cursor.execute("DELETE FROM players")
+    db.commit()
     return
+
 
 def countPlayers():
     """Returns the number of players currently registered."""
-    DB = connect()
-    c = DB.cursor()
-    c.execute("SELECT COUNT(*) FROM players")
-    player_cnt = c.fetchone()
+    db, cursor = connect()
+    cursor.execute("SELECT COUNT(*) FROM players")
+    player_cnt = cursor.fetchone()
     if player_cnt:
         player_cnt = player_cnt[0]
     else:
         player_cnt = 0
-    DB.close()
+    db.close()
     return player_cnt
+
 
 def registerPlayer(name):
     """Adds a player to the tournament database.
@@ -50,11 +55,11 @@ def registerPlayer(name):
     Args:
       name: the player's full name (need not be unique).
     """
-    DB = connect()
-    c = DB.cursor()
-    c.execute("INSERT INTO players (name) VALUES (%s)",(name,))
-    DB.commit()
+    db, cursor = connect()
+    cursor.execute("INSERT INTO players (name) VALUES (%s)", (name,))
+    db.commit()
     return
+
 
 def playerStandings():
     """Returns a list of the players and their win records, sorted by wins.
@@ -69,17 +74,17 @@ def playerStandings():
         wins: the number of matches the player has won
         matches: the number of matches the player has played
     """
-    DB = connect()
-    c = DB.cursor()
-    c.execute("""SELECT players.playerid, name, wins, matches
+    db, cursor = connect()
+    cursor.execute("""SELECT players.playerid, name, wins, matches
         FROM players
         left join total_wins on players.playerid = total_wins.playerid
         left join total_matches on players.playerid = total_matches.playerid
         order by wins desc, players.playerid asc
         """)
-    standings = c.fetchall()
-    DB.close()
+    standings = cursor.fetchall()
+    db.close()
     return standings
+
 
 def checkMatch(player1, player2):
     """Returns a true if match between player1 and player2 already exist
@@ -93,19 +98,19 @@ def checkMatch(player1, player2):
 
     Returns: True or False
     """
-    DB = connect()
-    c = DB.cursor()
-    c.execute("""SELECT *
+    db, cursor = connect()
+    cursor.execute("""SELECT *
         FROM matches
         where (winner = %s or winner = %s) and
               (loser = %s or loser = %s)
-        """,(player1,player2,player1,player2,))
-    rcnt = c.rowcount
-    DB.close()
+        """, (player1, player2, player1, player2,))
+    rcnt = cursor.rowcount
+    db.close()
     if rcnt > 0:
         return True
     else:
         return False
+
 
 def reportMatch(winner, loser):
     """Records the outcome of a single match between two players.
@@ -114,11 +119,12 @@ def reportMatch(winner, loser):
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
     """
-    DB = connect()
-    c = DB.cursor()
-    c.execute("INSERT INTO matches (winner, loser) VALUES (%s, %s)",(winner, loser,))
-    DB.commit()
+    db, cursor = connect()
+    cursor.execute(
+        "INSERT INTO matches (winner, loser) VALUES (%s, %s)", (winner, loser,))
+    db.commit()
     return
+
 
 def swissPairings():
     """Returns a list of pairs of players for the next round of a match.
@@ -135,31 +141,29 @@ def swissPairings():
         id2: the second player's unique id
         name2: the second player's name
     """
-    standings =playerStandings()
-    pairing=[]
-    tracker={}
+    standings = playerStandings()
+    pairing = []
+    tracker = {}
 
     for index1 in range(len(standings)):
-        for index2 in range(index1+1,len(standings)):
+        for index2 in range(index1+1, len(standings)):
             # check if standings[index1] vs standing[index2] already exist
             try:
                 if checkMatch(standings[index1][0], standings[index2][0]):
                     #print('match already exist for {} vs {}'.format(standings[index1][0], standings[index2][0]))
                     continue
                 if tracker[standings[index1][0]] == 'done':
-                    #print 'breaking out index1 is done'
+                    # print 'breaking out index1 is done'
                     break
                 if tracker[standings[index2][0]] == 'done':
-                    #print 'continueing 2nd loop index2 is done'
+                    # print 'continueing 2nd loop index2 is done'
                     continue
             except KeyError:
                 pass
-            pairing.append((standings[index1][0],standings[index1][1],standings[index2][0],standings[index2][1],))
+            pairing.append((standings[index1][0], standings[index1][
+                           1], standings[index2][0], standings[index2][1],))
             tracker[standings[index1][0]] = 'done'
             tracker[standings[index2][0]] = 'done'
             #print('pairing ',  standings[index1][0], standings[index2][0])
             break
     return pairing
-
-
-

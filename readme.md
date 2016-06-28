@@ -13,12 +13,9 @@ This project has two parts: defining the database schema (SQL table definitions)
 1. Login to vagrant
   * type '*vagrant ssh*'
   * cd <folder with tournament files are stored>  ex. cd /vagrant/tournament
-2. Create a new database and named it "tournament".
-  * once login to vagrant...type '*psql*' to launch PostgresSQL
-  * type the following to create the database.  '*CREATE DATABASE tournament*'
-3. Run tournament.sql to create the tables and view under the new database.
-  * while still login to psql, type the following to launch the SQL script.  '*\i tournament.sql*'
-  * type '*\q*' to quit PostgresSQL
+2. Create a new database and its table and view.
+  * once login to vagrant...type '*psql -f tournament.sql*'
+  * or login to PSQL by typing '*psql*' then type '\i tournament.sql'
 4. Exit out from PostgresSQL and run "tournament_test.py" code.
   * type "*python tournament_test.py*"
 
